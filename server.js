@@ -3,6 +3,8 @@ const { resolve } = require('path');
 const staticServer = require('koa-static');
 const koaBody = require('koa-body');
 const cors = require('koa2-cors');
+const bodyParser = require('koa-bodyparser'); //post数据处理
+const router = require('koa-router')(); //路由模块
 const logger = require('koa-logger');
 const sqlite3 = require('sqlite3').verbose();
 
@@ -48,20 +50,32 @@ function insertData(insertViewerData) {
 }
 
 function updateData(updateViewerData) {
+  const strData = JSON.stringify(updateViewerData)
+  console.log(strData)
+  return new Promise((resolve, reject) => {
   db.run('UPDATE  source set data = ? WHERE id ?',  updateViewerData,'1', function (err) {
-    if (err) reject(new Error(err));
-    resolve(`更新成功`);
+   // if (err) reject(new Error(err));
+    if (err) reject({code:404});
+    resolve({code:200});
   });
+});
 }
 
 function getData(){
+  return new Promise((resolve, reject) => {
   db.get("select * from source", function (err, rows) {
     //if (err) throw err;
     if(err){
+      // reject(new Error(err))
+      console.log(err)
       return null;
     }
-    return rows;
+    
+   // console.log(rows)
+   resolve(rows);
+   // return rows;
   });
+});
 }
 
 const viewerData = [{ "id": "0", "item": { "type": "Panel", "config": { "text": "页面1", "color": "rgba(60,60,60,1)", "width": 1366, "height": 768, "layerList": [{ "id": "0", "zIndex": 2, "visibility": 1, "desc": "默认层级" }] }, "h": "0px", "editableEl": [{ "key": "text", "name": "名称", "type": "Text" }, { "key": "color", "name": "背景颜色", "type": "Color" }, { "key": "width", "name": "宽", "type": "Number" }, { "key": "height", "name": "高", "type": "Number" }, { "key": "layerList", "name": "层级", "type": "LayerList", "cropRate": 2 }], "category": "basePanel", "x": 0, "w": "0px" }, "point": { "i": "x-0", "x": 0, "y": 0, "w": 1, "h": 1, "isBounded": true }, "status": "initCanvas" }]
@@ -129,47 +143,61 @@ connectDataBase(db, databaseFile, tableName, viewerStrData).then((result) => {
 
 const app = new Koa();
 
+router.get("/err",async ctx=>{
+   data = "讨厌！ヾ(≧▽≦*)o";
+  ctx.body = data;
+})
+router.get("/getdata",async ctx=>{
+  let data =  await getData();
+  ctx.body = data.data;
+})
+router.post("/updatedata",async ctx=>{
+  let data =  await updateData(ctx.params.data);
+  ctx.body = data;
+})
 app.use(staticServer(resolve(__dirname, './static')));
 app.use(koaBody());
+app.use(bodyParser());
 app.use(logger());
 
 // 设置跨域
-app.use(
-  cors({
-    origin: function (ctx) {
-      if (ctx.url.indexOf('/') > -1) {
-        return '*'; // 允许来自所有域名请求
-      }
-      return '';
-    },
-    exposeHeaders: ['WWW-Authenticate', 'Server-Authorization', 'x-test-code'],
-    maxAge: 5, //  该字段可选，用来指定本次预检请求的有效期，单位为秒
-    credentials: true,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: [
-      'Content-Type',
-      'Authorization',
-      'Accept',
-      'x-requested-with',
-      'Content-Encoding',
-    ],
-  }),
-);
+// app.use(
+//   cors({
+//     origin: function (ctx) {
+//       if (ctx.url.indexOf('/') > -1) {
+//         return '*'; // 允许来自所有域名请求
+//       }
+//       return '';
+//     },
+//     exposeHeaders: ['WWW-Authenticate', 'Server-Authorization', 'x-test-code'],
+//     maxAge: 5, //  该字段可选，用来指定本次预检请求的有效期，单位为秒
+//     credentials: true,
+//     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     allowHeaders: [
+//       'Content-Type',
+//       'Authorization',
+//       'Accept',
+//       'x-requested-with',
+//       'Content-Encoding',
+//     ],
+//   }),
+// );
 
-let htmlStr = '';
+// let htmlStr = '';
 
-app.use(async (ctx, next) => {
-  console.log(ctx.url);
-  if (ctx.url === '/render') {
-    htmlStr = ctx.request.body;
-    ctx.body = 'success';
-  } else if (ctx.url.indexOf('/html') === 0) {
-    ctx.type = 'html';
-    ctx.body = htmlStr;
-  }
-});
+// app.use(async (ctx, next) => {
+//   console.log(ctx.url);
+//   if (ctx.url === '/render') {
+//     htmlStr = ctx.request.body;
+//     ctx.body = 'success';
+//   } else if (ctx.url.indexOf('/html') === 0) {
+//     ctx.type = 'html';
+//     ctx.body = htmlStr;
+//   }
+// });
 
 
-
+app.use(cors());
+app.use(router.routes())
 
 app.listen(3000);
