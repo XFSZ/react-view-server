@@ -152,10 +152,12 @@ router.get("/err", async ctx => {
 router.get("/getdata", async ctx => {
   let data = await getData();
   ctx.body = data.data;
+   console.log("{request get success:200}")
 })
 router.post("/updatedata", async ctx => {
   let data = await updateData(ctx.request.body.data);
   ctx.body = data;
+  console.log(data)
 })
 // 设置跨域
 // app.use(
