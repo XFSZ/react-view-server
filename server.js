@@ -5,9 +5,12 @@ const koaBody = require('koa-body');
 const cors = require('koa2-cors');
 const bodyParser = require('koa-bodyparser'); //post数据处理
 const router = require('koa-router')(); //路由模块
+// 初始化 router2
+const router2 = require('koa-router')();
 const logger = require('koa-logger');
 const sqlite3 = require('sqlite3').verbose();
 const staticServer = require('koa-static');
+const { nextTick } = require('process');
 
 
 const db = new sqlite3.Database("./data/db.db", function (err) {
@@ -143,21 +146,62 @@ connectDataBase(db, databaseFile, tableName, viewerStrData).then((result) => {
 
 
 
+
+
+/*
+// 初始化 router1
+const router1 = require('koa-router')();
+
+// 初始化 router2
+const router2 = require('koa-router')();
+
+// 使用router1做一些事情
+router1.get('/', (ctx, next) => {
+  ctx.body = 'router1';
+  next();
+});
+router1.get('/:id', (ctx, next) => {
+  console.log(22222222);
+  console.log(ctx.params);
+  next();
+});
+
+// 使用router2嵌套router1
+router2.use('/user/:id/xxx', router1.routes(), router1.allowedMethods());
+
+
+// 加载路由中间件
+app.use(router2.routes());
+*/
+
+
+
 const app = new Koa();
+
+// 使用router2做一些事情
+router2.get("/getdata", async ctx => {
+  let data = await getData();
+  ctx.body = data.data;
+   console.log("{request get success:200}")
+   // next();
+})
+router2.post("/updatedata", async ctx => {
+  let data = await updateData(ctx.request.body.data);
+  ctx.body = data;
+  console.log(data)
+   // next();
+})
+
+// 使用router2嵌套router1
+router.use('/api', router2.routes(), router2.allowedMethods());
 
 router.get("/err", async ctx => {
   let data = "讨厌！ヾ(≧▽≦*)o";
   ctx.body = data;
 })
-router.get("/getdata", async ctx => {
-  let data = await getData();
-  ctx.body = data.data;
-   console.log("{request get success:200}")
-})
-router.post("/updatedata", async ctx => {
-  let data = await updateData(ctx.request.body.data);
+router.get("/", async ctx => {
+  let data = "讨厌！ヾ(≧▽≦*)o";
   ctx.body = data;
-  console.log(data)
 })
 // 设置跨域
 // app.use(
@@ -207,4 +251,6 @@ app.use(staticServer(resolve(__dirname, './static')));
 
 //app.use(router.routes())
 
-app.listen(3000);
+app.listen(3000,()=>{
+  console.log('http://127.0.0.1:3000/');
+});
