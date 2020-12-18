@@ -1,6 +1,6 @@
 const Koa = require('koa');
 const { resolve } = require('path');
-
+const multer = require('koa-multer');
 const koaBody = require('koa-body');
 const cors = require('koa2-cors');
 const bodyParser = require('koa-bodyparser'); //post数据处理
@@ -11,7 +11,8 @@ const logger = require('koa-logger');
 const sqlite3 = require('sqlite3').verbose();
 const staticServer = require('koa-static');
 const { nextTick } = require('process');
-
+const moment = require('moment');
+const fs =require('fs');
 
 const db = new sqlite3.Database("./data/db.db", function (err) {
   if (err) throw err;
@@ -148,32 +149,18 @@ connectDataBase(db, databaseFile, tableName, viewerStrData).then((result) => {
 
 
 
-/*
-// 初始化 router1
-const router1 = require('koa-router')();
 
-// 初始化 router2
-const router2 = require('koa-router')();
-
-// 使用router1做一些事情
-router1.get('/', (ctx, next) => {
-  ctx.body = 'router1';
-  next();
-});
-router1.get('/:id', (ctx, next) => {
-  console.log(22222222);
-  console.log(ctx.params);
-  next();
-});
-
-// 使用router2嵌套router1
-router2.use('/user/:id/xxx', router1.routes(), router1.allowedMethods());
-
-
-// 加载路由中间件
-app.use(router2.routes());
-*/
-
+// 随机字符串
+function randomString(len) {
+  　　len = len || 32;
+      let $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+      let maxPos = $chars.length;
+      let pwd = '';
+  　　for (i = 0; i < len; i++) {
+  　　　　pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+  　　}
+  　　return pwd;
+  }
 
 
 const app = new Koa();
@@ -192,6 +179,38 @@ router2.post("/updatedata", async ctx => {
    // next();
 })
 
+
+
+// 上传 图片
+var storage = multer.diskStorage({
+        //文件保存路径
+        destination: function(req, file, cb) {
+            cb(null, resolve(__dirname, './static/uploadFile/'))
+        },
+        //修改文件名称
+        filename: function(req, file, cb) {
+          let fileName = file.originalname;
+          const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+          const filename = randomString(4)+moment().format('YYYYMMDDHHmmss')+ "."+fileExtension; 
+          cb(null, filename)
+        }
+    })
+//加载配置
+var upload = multer({
+  storage: storage
+ });
+
+router2.post("/uploadimg", upload.single('file'), async ctx => {
+//console.log( moment() );
+ // 上传单个文件
+ //const file = ctx.request.files.file; // 获取上传文件
+ // 创建可读流
+ //const reader = fs.createReadStream(file.path);
+ console.log(ctx.req.file.filename)
+ ctx.body = {result :{url:"/uploadFile/"+ctx.req.file.filename}}
+//fs.wirteFileSync(path.__dirname +'/static/uploadFile/'+ filename, data )
+   // next();
+})
 // 使用router2嵌套router1
 router.use('/api', router2.routes(), router2.allowedMethods());
 
@@ -203,33 +222,18 @@ router.get("/", async ctx => {
   let data = "讨厌！ヾ(≧▽≦*)o";
   ctx.body = data;
 })
-// 设置跨域
-// app.use(
-//   cors({
-//     origin: function (ctx) {
-//       if (ctx.url.indexOf('/updatedata') > -1) {
-//         return '*'; // 允许来自所有域名请求
-//       }
-//       return '';
-//     },
-//     exposeHeaders: ['WWW-Authenticate', 'Server-Authorization', 'x-test-code'],
-//     maxAge: 5, //  该字段可选，用来指定本次预检请求的有效期，单位为秒
-//     credentials: true,
-//     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//     allowHeaders: [
-//       'Content-Type',
-//       'Authorization',
-//       'Accept',
-//       'x-requested-with',
-//       'Content-Encoding',
-//     ],
-//   }),
-// );
+
 
 app.use(cors());
 app.use(bodyParser());
 app.use(router.routes()).use(router.allowedMethods());
 //app.use(koaBody());
+// app.use(koaBody({
+//   multipart: true,
+//   formidable: {
+//       maxFileSize: 200*1024*1024    // 设置上传文件大小最大限制，默认2M
+//   }
+// }));
 app.use(logger());
 app.use(staticServer(resolve(__dirname, './static')));
 
