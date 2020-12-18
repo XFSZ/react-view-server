@@ -182,7 +182,7 @@ router2.post("/updatedata", async ctx => {
 
 
 // 上传 图片
-var storage = multer.diskStorage({
+const storage = multer.diskStorage({
         //文件保存路径
         destination: function(req, file, cb) {
             cb(null, resolve(__dirname, './static/uploadFile/'))
@@ -195,9 +195,29 @@ var storage = multer.diskStorage({
           cb(null, filename)
         }
     })
+//文件上传限制
+const limits = {
+  fields: 10,//非文件字段的数量
+  fileSize: 1024 * 1024 *2,//文件大小 单位 b
+  files: 1//文件数量
+}
+// 文件类型限制
+const fileFilter = (ctx, file ,cb)=>{
+  //过滤上传的后缀为 pic 的文件
+  let fileName = file.originalname;
+  const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+  let ext = '.'+fileExtension;
+  if(ext !== '.png' && ext !== '.jpg' && ext !== '.gif' && ext !== '.jpeg') {
+      return cb(new Error('Only images are allowed'))
+  }
+  cb(null, true)
+  }
+
 //加载配置
 var upload = multer({
-  storage: storage
+  storage: storage,
+  limits:limits,
+  fileFilter:fileFilter,
  });
 
 router2.post("/uploadimg", upload.single('file'), async ctx => {
